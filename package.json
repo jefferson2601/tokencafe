@@ -1,0 +1,22 @@
+{
+  "name": "token-cafe",
+  "version": "1.0.0",
+  "description": "Plataforma de tokenização temática de café",
+  "main": "index.js",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network sepolia"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@openzeppelin/contracts": "^4.9.3",
+    "dotenv": "^16.5.0",
+    "ethers": "^6.13.7",
+    "web3": "^4.3.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.23.0"
+  }
+}
