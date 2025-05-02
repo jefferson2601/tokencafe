@@ -1,8 +1,5 @@
-Ótimo! O seu `README.md` está bem estruturado, mas como você fez melhorias no projeto (como uso da **rede Holesky**, deploy funcional, e melhorias no contrato), aqui está uma **versão atualizada e aprimorada** do seu `README.md`, com um toque mais profissional e atual:
 
----
 
-```markdown
 # ☕ Token Café - Plataforma de Tokenização com Web3
 
 Uma plataforma Web3 temática onde usuários podem comprar tokens representando diferentes tipos de café (CafeX e CafeY) diretamente com ETH na rede Holesky.
@@ -104,8 +101,3 @@ npx http-server
 MIT License
 ```
 
----
-
-Se quiser, posso já criar esse `README.md` atualizado pra você e salvar no projeto local, é só pedir.
-
-Quer que eu faça isso agora?
