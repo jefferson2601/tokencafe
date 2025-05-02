@@ -111,15 +111,15 @@ const contractABI = [{
     "stateMutability":"nonpayable",
     "type":"function"
   }];
-// Inicialização do Web3
+// Inicializa Web3
 if (typeof window.ethereum !== 'undefined') {
     web3 = new Web3(window.ethereum);
     console.log('MetaMask detectado.');
 } else {
-    alert('MetaMask não detectado. Por favor, instale a extensão para continuar.');
+    alert('MetaMask não detectado. Instale a extensão para continuar.');
 }
 
-// Conectar carteira e carregar dados
+// Conecta a carteira e carrega os dados
 async function connectWallet() {
     try {
         const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
@@ -133,33 +133,13 @@ async function connectWallet() {
 
         await loadEthBalance(address);
         await loadTokenBalances(address);
-
     } catch (error) {
         console.error('Erro ao conectar carteira:', error.message || error);
         alert('Erro ao conectar à carteira. Verifique o MetaMask.');
     }
 }
 
-// Criar uma nova carteira
-//async function createNewWallet() {
-   // try {
-     //   const newAccount = web3.eth.accounts.create();
-      //  const privateKey = newAccount.privateKey;
-      //  const address = newAccount.address;
-
-        // Exibe a chave privada e o endereço da nova carteira
-       // document.getElementById('privateKey').textContent = privateKey;
-        //document.getElementById('newWalletAddress').textContent = address;
-        //document.getElementById('newWalletInfo').classList.remove('hidden');
-
-        //alert('Nova carteira criada! Guarde sua chave privada em um local seguro.');
-    //} catch (error) {
-      //  console.error('Erro ao criar nova carteira:', error);
-      //  alert('Erro ao criar nova carteira.');
-   // }
-//}//
-
-// Carregar saldo de ETH
+// Carrega saldo ETH
 async function loadEthBalance(address) {
     try {
         const balanceWei = await web3.eth.getBalance(address);
@@ -170,7 +150,7 @@ async function loadEthBalance(address) {
     }
 }
 
-// Carregar saldos dos tokens Café X e Y
+// Carrega saldos dos tokens
 async function loadTokenBalances(address) {
     try {
         const cafeX = await contract.methods.balanceOfCafeX(address).call();
@@ -183,39 +163,83 @@ async function loadTokenBalances(address) {
     }
 }
 
-// Comprar token genérico
-async function buyToken(type) {
-    const inputId = type === 'X' ? 'cafeXAmount' : 'cafeYAmount';
-    const amount = document.getElementById(inputId).value;
-
+// Comprar Café X
+async function buyCafeX() {
+    const amount = document.getElementById('cafeXAmount').value;
     if (!amount || amount <= 0) {
-        return alert('Insira uma quantidade válida.');
+        alert('Digite uma quantidade válida para comprar Café X.');
+        return;
     }
-
-    const price = type === 'X' ? web3.utils.toWei("0.001", "ether") : web3.utils.toWei("0.0005", "ether");
-    const totalPrice = web3.utils.toBN(price).mul(web3.utils.toBN(amount));  // Multiplicação correta de preços com a quantidade
 
     try {
         const accounts = await web3.eth.getAccounts();
-        const methodName = type === 'X' ? 'buyCafeX' : 'buyCafeY';
+        const pricePerToken = await contract.methods.CAFE_X_PRICE().call();
+        const totalPrice = web3.utils.toBN(pricePerToken).mul(web3.utils.toBN(amount));
 
-        // Passando o valor total (totalPrice) e o amount para a função
-        await contract.methods[methodName](web3.utils.toBN(amount)).send({
+        contract.methods.buyCafeX(amount).send({
             from: accounts[0],
             value: totalPrice
+        })
+        .on('transactionHash', function(hash) {
+            console.log('Hash da transação de Café X:', hash);
+        })
+        .on('receipt', async function(receipt) {
+            try {
+                console.log('Transação de Café X confirmada!', receipt);
+                alert('Compra de Café X concluída!');
+                await loadTokenBalances(accounts[0]);
+            } catch (innerError) {
+                console.error('Erro ao carregar saldo após Café X:', innerError);
+            }
+        })
+        .on('error', function(error) {
+            console.error('Erro na transação de Café X:', error);
+            alert('Erro ao comprar Café X.');
         });
 
-        alert(`Compra de Café ${type} concluída com sucesso!`);
-        await loadTokenBalances(accounts[0]);
-
     } catch (error) {
-        console.error(`Erro ao comprar Café ${type}:`, error);
-        alert(`Falha na compra de Café ${type}.`);
+        console.error('Erro inesperado na compra de Café X:', error);
+        alert('Erro ao comprar Café X.');
     }
 }
 
-// Listeners
+// Comprar Café Y
+async function buyCafeY() {
+    const amount = document.getElementById('cafeYAmount').value;
+    if (!amount || amount <= 0) {
+        alert('Digite uma quantidade válida para comprar Café Y.');
+        return;
+    }
+
+    try {
+        const accounts = await web3.eth.getAccounts();
+        const pricePerToken = await contract.methods.CAFE_Y_PRICE().call();
+        const totalPrice = web3.utils.toBN(pricePerToken).mul(web3.utils.toBN(amount));
+
+        contract.methods.buyCafeY(amount).send({
+            from: accounts[0],
+            value: totalPrice
+        })
+        .on('transactionHash', function(hash) {
+            console.log('Hash da transação de Café Y:', hash);
+        })
+        .on('receipt', async function(receipt) {
+            console.log('Transação de Café Y confirmada!', receipt);
+            alert('Compra de Café Y concluída!');
+            await loadTokenBalances(accounts[0]);
+        })
+        .on('error', function(error) {
+            console.error('Erro na transação de Café Y:', error);
+            alert('Erro ao comprar Café Y.');
+        });
+
+    } catch (error) {
+        console.error('Erro inesperado na compra de Café Y:', error);
+        alert('Erro ao comprar Café Y.');
+    }
+}
+
+// Eventos
 document.getElementById('connectWalletButton').addEventListener('click', connectWallet);
-document.getElementById('createWalletButton').addEventListener('click', createNewWallet);
-document.getElementById('buyCafeXButton').addEventListener('click', () => buyToken('X'));
-document.getElementById('buyCafeYButton').addEventListener('click', () => buyToken('Y'));
+document.getElementById('buyCafeXButton').addEventListener('click', buyCafeX);
+document.getElementById('buyCafeYButton').addEventListener('click', buyCafeY);
