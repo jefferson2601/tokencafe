@@ -204,6 +204,7 @@ async function buyCafeX() {
 }
 
 // Comprar Café Y
+// Comprar Café Y
 async function buyCafeY() {
     const amount = document.getElementById('cafeYAmount').value;
     if (!amount || amount <= 0) {
@@ -224,9 +225,13 @@ async function buyCafeY() {
             console.log('Hash da transação de Café Y:', hash);
         })
         .on('receipt', async function(receipt) {
-            console.log('Transação de Café Y confirmada!', receipt);
-            alert('Compra de Café Y concluída!');
-            await loadTokenBalances(accounts[0]);
+            try {
+                console.log('Transação de Café Y confirmada!', receipt);
+                alert('Compra de Café Y concluída!');
+                await loadTokenBalances(accounts[0]);
+            } catch (innerError) {
+                console.error('Erro ao carregar saldo após Café Y:', innerError);
+            }
         })
         .on('error', function(error) {
             console.error('Erro na transação de Café Y:', error);
