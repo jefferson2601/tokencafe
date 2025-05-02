@@ -6,73 +6,106 @@ async function main() {
     const [deployer] = await hre.ethers.getSigners();
     console.log("Deploying contracts with:", deployer.address);
 
-    // GasPrice pode variar na Holesky, mas 1 gwei geralmente é suficiente
     const overrides = {
       gasPrice: hre.ethers.parseUnits("1", "gwei"),
     };
 
-    // Deploy CafeX
-    const CafeX = await hre.ethers.getContractFactory("CafeX");
-    const cafeX = await CafeX.deploy({ ...overrides });
-    await cafeX.waitForDeployment();
-    const cafeXAddress = await cafeX.getAddress();
-    console.log("CafeX deployed to:", cafeXAddress);
+    // -------- Deploy dos Tokens Individuais --------
+    const tokens = [
+      "CafeTX",
+      "CafeTY",
+      "CafeTZ",
+      "MilhoTX",
+      "SojaTA",
+      "SojaTT",
+      "TrigoTX",
+      "TrigoTY",
+    ];
 
-    // Deploy CafeY
-    const CafeY = await hre.ethers.getContractFactory("CafeY");
-    const cafeY = await CafeY.deploy({ ...overrides });
-    await cafeY.waitForDeployment();
-    const cafeYAddress = await cafeY.getAddress();
-    console.log("CafeY deployed to:", cafeYAddress);
+    const deployed = {};
 
-    // Deploy CafeTokenSale
+    for (const tokenName of tokens) {
+      const Token = await hre.ethers.getContractFactory(tokenName);
+      const token = await Token.deploy({ ...overrides });
+      await token.waitForDeployment();
+      const address = await token.getAddress();
+      deployed[tokenName] = { instance: token, address };
+      console.log(`${tokenName} deployed to:`, address);
+    }
+
+    // -------- Deploy do contrato CafeTokenSale --------
     const CafeTokenSale = await hre.ethers.getContractFactory("CafeTokenSale");
-    const cafeTokenSale = await CafeTokenSale.deploy(cafeXAddress, cafeYAddress, { ...overrides });
+    const cafeTokenSale = await CafeTokenSale.deploy(
+      deployed.CafeTX.address,
+      deployed.CafeTY.address,
+      deployed.CafeTZ.address,
+      deployed.MilhoTX.address,
+      deployed.SojaTA.address,
+      deployed.SojaTT.address,
+      deployed.TrigoTX.address,
+      deployed.TrigoTY.address,
+      { ...overrides }
+    );
     await cafeTokenSale.waitForDeployment();
     const cafeTokenSaleAddress = await cafeTokenSale.getAddress();
     console.log("CafeTokenSale deployed to:", cafeTokenSaleAddress);
 
-    // Transferir tokens para o contrato de vendas
+    // -------- Transferência de tokens --------
     console.log("Transferindo tokens...");
+    const transfers = [
+      { name: "CafeTX", amount: "1500000" },
+      { name: "CafeTY", amount: "2000000" },
+      { name: "CafeTZ", amount: "1800000" },
+      { name: "MilhoTX", amount: "1200000" },
+      { name: "SojaTA", amount: "1700000" },
+      { name: "SojaTT", amount: "1600000" },
+      { name: "TrigoTX", amount: "1900000" },
+      { name: "TrigoTY", amount: "1400000" },
+    ];
 
-    const transferAmountX = hre.ethers.parseUnits("1500000", await cafeX.decimals());
-    const transferAmountY = hre.ethers.parseUnits("2000000", await cafeY.decimals());
+    for (const { name, amount } of transfers) {
+      const token = deployed[name].instance;
+      const decimals = await token.decimals();
+      const transferAmount = hre.ethers.parseUnits(amount, decimals);
+      const tx = await token.transfer(cafeTokenSaleAddress, transferAmount, { ...overrides });
+      await tx.wait();
+      console.log(`Tokens ${name} transferidos: ${transferAmount.toString()}`);
+    }
 
-    const tx1 = await cafeX.transfer(cafeTokenSaleAddress, transferAmountX, { ...overrides });
-    await tx1.wait();
-    console.log(`Tokens CafeX transferidos: ${transferAmountX.toString()}`);
-
-    const tx2 = await cafeY.transfer(cafeTokenSaleAddress, transferAmountY, { ...overrides });
-    await tx2.wait();
-    console.log(`Tokens CafeY transferidos: ${transferAmountY.toString()}`);
-
-    // Aguarda blocos para verificação
+    // -------- Verificação no Etherscan --------
     console.log("Aguardando blocos antes da verificação...");
     await new Promise((resolve) => setTimeout(resolve, 30000));
 
-    // Verifica contratos na Holesky Etherscan
     console.log("Verificando contratos na Holesky...");
 
-    await hre.run("verify:verify", {
-      address: cafeXAddress,
-      constructorArguments: [],
-    });
-
-    await hre.run("verify:verify", {
-      address: cafeYAddress,
-      constructorArguments: [],
-    });
+    for (const name of tokens) {
+      const contractPath = `contracts/${name.replace(/[A-Z][a-z]+$/, "")}.sol:${name}`;
+      await hre.run("verify:verify", {
+        address: deployed[name].address,
+        constructorArguments: [],
+        contract: contractPath,
+      });
+    }
 
     await hre.run("verify:verify", {
       address: cafeTokenSaleAddress,
-      constructorArguments: [cafeXAddress, cafeYAddress],
+      constructorArguments: [
+        deployed.CafeTX.address,
+        deployed.CafeTY.address,
+        deployed.CafeTZ.address,
+        deployed.MilhoTX.address,
+        deployed.SojaTA.address,
+        deployed.SojaTT.address,
+        deployed.TrigoTX.address,
+        deployed.TrigoTY.address,
+      ],
+      contract: "contracts/CafeTokenSale.sol:CafeTokenSale",
     });
 
-    // Salva os endereços
+    // -------- Salvar endereços --------
     const addresses = {
-      cafeX: cafeXAddress,
-      cafeY: cafeYAddress,
-      cafeTokenSale: cafeTokenSaleAddress,
+      CafeTokenSale: cafeTokenSaleAddress,
+      ...Object.fromEntries(tokens.map((name) => [name, deployed[name].address])),
     };
 
     fs.writeFileSync("contract-addresses.json", JSON.stringify(addresses, null, 2));
